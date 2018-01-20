@@ -124,6 +124,8 @@ import re
 import time
 import json
 
+from kafka import KafkaProducer
+
 #############
 # Constants #
 #############
@@ -178,6 +180,9 @@ def startProcessing():
 
     start_time_10000 = time.time()
     
+    # Start the producer
+    producer = KafkaProducer(bootstrap_servers=KAFKA_URL+":9092")
+    
     print("---------------------------------------------------------------")
     print("Start processing... ")
     print("---------------------------------------------------------------")
@@ -199,6 +204,12 @@ def startProcessing():
         line = str(line,'utf-8')
         
         jsonFile, match_seq_num = processLine(line)
+        
+        # Convert from string to bytes, as Kafka accepts bytes format.
+        jsonFile = jsonFile.encode()
+        
+        # Send it to Kafka
+        producer.send(TOPIC_NAME, jsonFile)
         
         n += 1
         
@@ -280,8 +291,6 @@ def processLine(line):
     result["players"] = players_info
     
     return json.dumps(result), result.get("match_seq_num", "0")
-
-
 
 
 if __name__ == "__main__":
