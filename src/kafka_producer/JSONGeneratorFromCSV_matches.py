@@ -76,46 +76,12 @@
             negative_votes: 0,
             game_mode: 3,
             flags: 1,
-            engine: 1,
-            radiant_score: 60,
-            dire_score: 38
+            engine: 1
         
         PlayerInMatch:
             account_id: 201080081,
             player_slot: 0,
-            hero_id: 87,
-            item_0: 36,
-            item_1: 102,
-            item_2: 37,
-            item_3: 100,
-            item_4: 180,
-            item_5: 232,
-            backpack_0: 43,
-            backpack_1: 46,
-            backpack_2: 0,
-            kills: 12,
-            deaths: 10,
-            assists: 25,
-            leaver_status: 0,
-            last_hits: 47,
-            denies: 9,
-            gold_per_min: 389,
-            xp_per_min: 560,
-            level: 23,
-            hero_damage: 20666,
-            tower_damage: 781,
-            hero_healing: 0,
-            gold: 2293,
-            gold_spent: 12900,
-            scaled_hero_damage: 15025,
-            scaled_tower_damage: 514,
-            scaled_hero_healing: 0,
-            ability_upgrades: ArrayList<AbilityUpgrade>
-        
-        AbilityUpgrade:
-            ability: 5458,
-            time: 244,
-            level: 1
+            hero_id: 87
 """
 
 import os
@@ -205,6 +171,7 @@ def startProcessing():
         
         jsonFile, match_seq_num = processLine(line)
         
+        
         # Convert from string to bytes, as Kafka accepts bytes format.
         jsonFile = jsonFile.encode()
         
@@ -290,7 +257,13 @@ def processLine(line):
     # Put it to "result"
     result["players"] = players_info
     
-    return json.dumps(result), result.get("match_seq_num", "0")
+    match_seq_num = result.get("match_seq_num", "0")
+    
+    # Convert to json string, and remove quotes and back slash
+    result = json.dumps(result)
+    result = re.sub(r"[\\\"]", "", result)
+    
+    return result, match_seq_num
 
 
 if __name__ == "__main__":
