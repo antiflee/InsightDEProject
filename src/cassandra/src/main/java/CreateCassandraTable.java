@@ -50,7 +50,7 @@ public class CreateCassandraTable {
                 + "PRIMARY KEY (account_id, date));";
 
         //Creating Cluster object
-        Cluster cluster = Cluster.builder().addContactPoint("ec2-34-213-32-67.us-west-2.compute.amazonaws.com").build();
+        Cluster cluster = Cluster.builder().addContactPoint(CASSANDRA_URL).build();
 
         //Creating Session object
         Session session = cluster.connect("ks");
