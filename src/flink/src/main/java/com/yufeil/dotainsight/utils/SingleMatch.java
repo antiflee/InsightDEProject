@@ -1,6 +1,8 @@
-package com.yufeil.dotainsight.flink_streaming;
+package com.yufeil.dotainsight.utils;
 
-import com.yufeil.dotainsight.utils.HostURLs;import java.util.ArrayList;
+import org.apache.flink.api.java.tuple.Tuple2;
+
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -31,9 +33,7 @@ public class SingleMatch {
         negative_votes: 0,
         game_mode: 3,
         flags: 1,
-        engine: 1,
-        radiant_score: 60,
-        dire_score: 38
+        engine: 1
      */
 
     private ArrayList<PlayerInMatch> players;
@@ -57,8 +57,6 @@ public class SingleMatch {
     private int game_mode;
     private int flags;
     private int engine;
-    private int radiant_score;
-    private int dire_score;
 
     // Some constants for the validation of the DOTA2 match.
     // See isValidMatch() method.
@@ -108,7 +106,9 @@ public class SingleMatch {
     }
 
     public long getStart_time() {
-        return start_time;
+        // Note here we convert the timestamp unit from second to millisecond.
+        // This is because Flink uses millisecond unit for the timestamp watermark.
+        return start_time * 1000;
     }
 
     public void setStart_time(long start_time) {
@@ -243,22 +243,6 @@ public class SingleMatch {
         this.engine = engine;
     }
 
-    public int getRadiant_score() {
-        return radiant_score;
-    }
-
-    public void setRadiant_score(int radiant_score) {
-        this.radiant_score = radiant_score;
-    }
-
-    public int getDire_score() {
-        return dire_score;
-    }
-
-    public void setDire_score(int dire_score) {
-        this.dire_score = dire_score;
-    }
-
     public boolean isValidMatch() {
         /*
             Validate if the match is valid. Valid means:
@@ -266,9 +250,9 @@ public class SingleMatch {
             (2) duration >= 1000;
             (3) game_mode in (1,2,3,5,16,22)
          */
-        if (this.human_players== HostURLs.SingleMatch.VALID_HUMAN_PLAYERS
-                && this.duration >= HostURLs.SingleMatch.MIN_VALID_DURATION
-                && HostURLs.SingleMatch.VALID_GAMEMODES.contains(this.game_mode)) {
+        if (this.human_players== SingleMatch.VALID_HUMAN_PLAYERS
+                && this.duration >= SingleMatch.MIN_VALID_DURATION
+                && SingleMatch.VALID_GAMEMODES.contains(this.game_mode)) {
             return true;
         }
         return false;
@@ -277,7 +261,7 @@ public class SingleMatch {
     public String simplifyMatch() {
         /*
             Returns a string formatted as:
-                hero_id * 10 + radiant_win (true:1, false:0), delimiter = " "
+                hero_id * 10 + radiant_win (true:1, false:0) + timestamp, delimiter = " "
          */
         if (!this.isValidMatch()) {
             return "";
@@ -300,83 +284,39 @@ public class SingleMatch {
             result = "";
         }
 
+        result += this.getStart_time();
+
         return result;
     }
 
-    public String simplyMatchWithStartTime() {
+    public ArrayList<Tuple2<String, Integer>> extractHeroResult() {
         /*
-            Returns the simplified version of the match with its start_time
+            Given a match, extract the ten <hero_id, win/lose> tuples.
          */
-        return this.simplifyMatch() + " " + String.valueOf(this.getStart_time());
+        ArrayList<Tuple2<String, Integer>> result = null;
+
+        for (int i=0; i<this.players.size(); i++) {
+            PlayerInMatch player = players.get(i);
+            String hero_id = String.valueOf(player.hero_id);
+            Integer win = ((this.radiant_win && i < 5) || (!this.radiant_win && i >= 5))? 1 : 0;
+            result.add(new Tuple2<>(hero_id, win));
+        }
+
+        return result;
     }
 
-
     // Details of each hero in the match
-    private class PlayerInMatch {
+    public class PlayerInMatch {
         /*
             An example:
                 account_id: 201080081,
                 player_slot: 0,
-                hero_id: 87,
-                item_0: 36,
-                item_1: 102,
-                item_2: 37,
-                item_3: 100,
-                item_4: 180,
-                item_5: 232,
-                backpack_0: 43,
-                backpack_1: 46,
-                backpack_2: 0,
-                kills: 12,
-                deaths: 10,
-                assists: 25,
-                leaver_status: 0,
-                last_hits: 47,
-                denies: 9,
-                gold_per_min: 389,
-                xp_per_min: 560,
-                level: 23,
-                hero_damage: 20666,
-                tower_damage: 781,
-                hero_healing: 0,
-                gold: 2293,
-                gold_spent: 12900,
-                scaled_hero_damage: 15025,
-                scaled_tower_damage: 514,
-                scaled_hero_healing: 0,
-                ability_upgrades: ArrayList<AbilityUpgrade>
+                hero_id: 87
          */
 
         private long account_id;
         private int player_slot;
         private int hero_id;
-        private int item_0;
-        private int item_1;
-        private int item_2;
-        private int item_3;
-        private int item_4;
-        private int item_5;
-        private int backpack_0;
-        private int backpack_1;
-        private int backpack_2;
-        private int kills;
-        private int deaths;
-        private int assists;
-        private int leaver_status;
-        private int last_hits;
-        private int denies;
-        private int gold_per_min;
-        private int xp_per_min;
-        private int level;
-        private int hero_damage;
-        private int tower_damage;
-        private int hero_healing;
-        private int gold;
-        private int gold_spent;
-        private int scaled_hero_damage;
-        private int scaled_tower_damage;
-        private int scaled_hero_healing;
-        private ArrayList<AbilityUpgrade> ability_upgrades;
 
         public PlayerInMatch(long account_id, int player_slot, int hero_id) {
             this.account_id = account_id;
@@ -408,266 +348,6 @@ public class SingleMatch {
             this.hero_id = hero_id;
         }
 
-        public int getItem_0() {
-            return item_0;
-        }
-
-        public void setItem_0(int item_0) {
-            this.item_0 = item_0;
-        }
-
-        public int getItem_1() {
-            return item_1;
-        }
-
-        public void setItem_1(int item_1) {
-            this.item_1 = item_1;
-        }
-
-        public int getItem_2() {
-            return item_2;
-        }
-
-        public void setItem_2(int item_2) {
-            this.item_2 = item_2;
-        }
-
-        public int getItem_3() {
-            return item_3;
-        }
-
-        public void setItem_3(int item_3) {
-            this.item_3 = item_3;
-        }
-
-        public int getItem_4() {
-            return item_4;
-        }
-
-        public void setItem_4(int item_4) {
-            this.item_4 = item_4;
-        }
-
-        public int getItem_5() {
-            return item_5;
-        }
-
-        public void setItem_5(int item_5) {
-            this.item_5 = item_5;
-        }
-
-        public int getBackpack_0() {
-            return backpack_0;
-        }
-
-        public void setBackpack_0(int backpack_0) {
-            this.backpack_0 = backpack_0;
-        }
-
-        public int getBackpack_1() {
-            return backpack_1;
-        }
-
-        public void setBackpack_1(int backpack_1) {
-            this.backpack_1 = backpack_1;
-        }
-
-        public int getBackpack_2() {
-            return backpack_2;
-        }
-
-        public void setBackpack_2(int backpack_2) {
-            this.backpack_2 = backpack_2;
-        }
-
-        public int getKills() {
-            return kills;
-        }
-
-        public void setKills(int kills) {
-            this.kills = kills;
-        }
-
-        public int getDeaths() {
-            return deaths;
-        }
-
-        public void setDeaths(int deaths) {
-            this.deaths = deaths;
-        }
-
-        public int getAssists() {
-            return assists;
-        }
-
-        public void setAssists(int assists) {
-            this.assists = assists;
-        }
-
-        public int getLeaver_status() {
-            return leaver_status;
-        }
-
-        public void setLeaver_status(int leaver_status) {
-            this.leaver_status = leaver_status;
-        }
-
-        public int getLast_hits() {
-            return last_hits;
-        }
-
-        public void setLast_hits(int last_hits) {
-            this.last_hits = last_hits;
-        }
-
-        public int getDenies() {
-            return denies;
-        }
-
-        public void setDenies(int denies) {
-            this.denies = denies;
-        }
-
-        public int getGold_per_min() {
-            return gold_per_min;
-        }
-
-        public void setGold_per_min(int gold_per_min) {
-            this.gold_per_min = gold_per_min;
-        }
-
-        public int getXp_per_min() {
-            return xp_per_min;
-        }
-
-        public void setXp_per_min(int xp_per_min) {
-            this.xp_per_min = xp_per_min;
-        }
-
-        public int getLevel() {
-            return level;
-        }
-
-        public void setLevel(int level) {
-            this.level = level;
-        }
-
-        public int getHero_damage() {
-            return hero_damage;
-        }
-
-        public void setHero_damage(int hero_damage) {
-            this.hero_damage = hero_damage;
-        }
-
-        public int getTower_damage() {
-            return tower_damage;
-        }
-
-        public void setTower_damage(int tower_damage) {
-            this.tower_damage = tower_damage;
-        }
-
-        public int getHero_healing() {
-            return hero_healing;
-        }
-
-        public void setHero_healing(int hero_healing) {
-            this.hero_healing = hero_healing;
-        }
-
-        public int getGold() {
-            return gold;
-        }
-
-        public void setGold(int gold) {
-            this.gold = gold;
-        }
-
-        public int getGold_spent() {
-            return gold_spent;
-        }
-
-        public void setGold_spent(int gold_spent) {
-            this.gold_spent = gold_spent;
-        }
-
-        public int getScaled_hero_damage() {
-            return scaled_hero_damage;
-        }
-
-        public void setScaled_hero_damage(int scaled_hero_damage) {
-            this.scaled_hero_damage = scaled_hero_damage;
-        }
-
-        public int getScaled_tower_damage() {
-            return scaled_tower_damage;
-        }
-
-        public void setScaled_tower_damage(int scaled_tower_damage) {
-            this.scaled_tower_damage = scaled_tower_damage;
-        }
-
-        public int getScaled_hero_healing() {
-            return scaled_hero_healing;
-        }
-
-        public void setScaled_hero_healing(int scaled_hero_healing) {
-            this.scaled_hero_healing = scaled_hero_healing;
-        }
-
-        public ArrayList<AbilityUpgrade> getAbility_upgrades() {
-            return ability_upgrades;
-        }
-
-        public void setAbility_upgrades(ArrayList<AbilityUpgrade> ability_upgrades) {
-            this.ability_upgrades = ability_upgrades;
-        }
     }
-
-    private class AbilityUpgrade {
-        /*
-            Example:
-            ability: 5458,
-            time: 244,
-            level: 1
-         */
-
-        private int ability;
-        private int time;
-        private int level;
-
-        public AbilityUpgrade(int ability, int time, int level) {
-            this.ability = ability;
-            this.time = time;
-            this.level = level;
-        }
-
-        public int getAbility() {
-            return ability;
-        }
-
-        public void setAbility(int ability) {
-            this.ability = ability;
-        }
-
-        public int getTime() {
-            return time;
-        }
-
-        public void setTime(int time) {
-            this.time = time;
-        }
-
-        public int getLevel() {
-            return level;
-        }
-
-        public void setLevel(int level) {
-            this.level = level;
-        }
-    }
-
-
 
 }
