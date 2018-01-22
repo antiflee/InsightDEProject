@@ -34,7 +34,7 @@ public class CreateCassandraTable {
                 + "PRIMARY KEY (cluster_id, time_));";
 
         String create_player_match= "CREATE TABLE IF NOT EXISTS player_match("
-                + "account_id varchar, "
+                + "account_id bigint, "
                 + "start_time timestamp, "
                 + "duration int, "
                 + "hero_id varchar, "
@@ -42,7 +42,7 @@ public class CreateCassandraTable {
                 + "PRIMARY KEY (account_id, start_time));";
 
         String create_player_daily = "CREATE TABLE IF NOT EXISTS player_daily("
-                + "account_id varchar, "
+                + "account_id bigint, "
                 + "date timestamp, "
                 + "matches_played int, "
                 + "matches_won int, "
