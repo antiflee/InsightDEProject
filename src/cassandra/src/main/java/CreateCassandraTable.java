@@ -30,7 +30,7 @@ public class CreateCassandraTable {
         String create_region_num_of_players = "CREATE TABLE IF NOT EXISTS region_num_of_players("
                 + "cluster_id int, "
                 + "time_ timestamp, "
-                + "num_of_players int, "
+                + "num_of_players bigint, "
                 + "PRIMARY KEY (cluster_id, time_));";
 
         String create_player_match= "CREATE TABLE IF NOT EXISTS player_match("
