@@ -2,6 +2,7 @@ package com.yufeil.dotainsight.utils;
 
 import org.apache.flink.api.java.tuple.Tuple2;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -241,6 +242,11 @@ public class SingleMatch {
 
     public void setEngine(int engine) {
         this.engine = engine;
+    }
+
+    public Timestamp getStartTimeInTimestamp() {
+        // Convert the start_time from long to Timestamp, in seconds
+        return new Timestamp(this.start_time);
     }
 
     public boolean isValidMatch() {
