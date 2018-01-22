@@ -23,8 +23,10 @@ package com.yufeil.dotainsight.flink_streaming;
             "hero_id1,win rate"
     (8) "hero-pair-win-rate":
             "hero_id1,hero_id2,win rate"
-    (8) "hero-counter-pair-win-rate":
+    (9) "hero-counter-pair-win-rate":
             "hero_id1,hero_id2,win rate"
+    (10) "region-num-of-players":
+            "cluster_id, time_, num_of_players"
 
     To-dos:
     (1) Use Avro for Schema Registry
