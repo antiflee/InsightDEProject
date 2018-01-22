@@ -633,7 +633,7 @@ public class JSONParser {
          */
         @Override
         public String map(Tuple3<String,Float,Timestamp> v) throws Exception {
-            return v.f0+","+String.valueOf(v.f1);
+            return v.f0+","+String.format("%.3f", v.f1);
         }
     }
 
@@ -644,7 +644,7 @@ public class JSONParser {
          */
         @Override
         public String map(Tuple3<String,Float,Long> v) throws Exception {
-            return v.f0+","+String.valueOf(v.f1);
+            return v.f0+","+String.format("%.3f", v.f1);
         }
     }
 
