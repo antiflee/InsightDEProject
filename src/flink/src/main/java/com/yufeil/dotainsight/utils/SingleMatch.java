@@ -245,8 +245,8 @@ public class SingleMatch {
     }
 
     public Timestamp getStartTimeInTimestamp() {
-        // Convert the start_time from long to Timestamp, in seconds
-        return new Timestamp(this.start_time);
+        // Convert the start_time from long to Timestamp
+        return new Timestamp(this.getStart_time());
     }
 
     public boolean isValidMatch() {

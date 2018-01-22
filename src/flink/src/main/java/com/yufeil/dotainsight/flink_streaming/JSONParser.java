@@ -57,9 +57,6 @@ import org.apache.flink.streaming.connectors.cassandra.CassandraSink;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer010;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer010;
 import org.apache.flink.util.Collector;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
-import redis.clients.jedis.JedisPoolConfig;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -301,7 +298,6 @@ public class JSONParser {
                         "hero-counter-pair-win-rate",
                         new SimpleStringSchema(),
                         properties));
-
 
           /////////////
          // Execute //

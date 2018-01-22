@@ -4,8 +4,10 @@ package com.yufeil.dotainsight.utils;
  */
 
 public class HostURLs {
-    public String ZOOKEEPER_URL     = System.getenv("ZOOKEEPER_URL");
-    public String KAFKA_URL         = System.getenv("KAFKA_URL");
+//    public String ZOOKEEPER_URL     = System.getenv("ZOOKEEPER_URL");
+//    public String KAFKA_URL         = System.getenv("KAFKA_URL");
+    public String ZOOKEEPER_URL     = "localhost";
+    public String KAFKA_URL         = "localhost";
     public String FLINK_URL         = System.getenv("FLINK_URL");
 //    public String CASSANDRA_URL     = System.getenv("CASSANDRA_URL");
     public String CASSANDRA_URL     = "ec2-34-213-32-67.us-west-2.compute.amazonaws.com";
