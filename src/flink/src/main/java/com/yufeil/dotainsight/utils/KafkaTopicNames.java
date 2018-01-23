@@ -12,5 +12,6 @@ public class KafkaTopicNames {
     public String HERO_COUNTER_PAIR_RESULT     = "hero-counter-pair-result";
     public String HERO_COUNTER_PAIR_WIN_RATE   = "hero-counter-pair-win-rate";
     public String REGION_INFO                  = "region-info";
+    public String REGION_NUM_OF_PLAYERS        = "region-num-of-players";
     public String PLAYER_MATCH_INFO            = "player-match-info";
 }
