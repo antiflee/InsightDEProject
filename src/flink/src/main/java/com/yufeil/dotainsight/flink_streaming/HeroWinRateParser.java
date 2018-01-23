@@ -45,7 +45,7 @@ import java.util.Properties;
 public class HeroWinRateParser {
 
     private static final int WINDOWLENGTH = 600000;   // in milliseconds.
-    private static final int SLIDELENGTH = 30000;   // in milliseconds.
+    private static final int SLIDELENGTH = 2000;   // in milliseconds.
     private static final String CASSANDRA_KEYSPACE = "ks";
 
     public static void main(String[] args) throws Exception {

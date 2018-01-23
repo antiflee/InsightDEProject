@@ -293,8 +293,6 @@ public class JSONParser {
          // Execute //
         /////////////
 
-        playerMatchInfo.print();
-
         env.execute("JSON Parser");
 
     }
