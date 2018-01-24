@@ -249,6 +249,21 @@ public class SingleMatch {
         return new Timestamp(this.getStart_time());
     }
 
+    public Integer getYear() {
+        // Get the year
+        return this.getStartTimeInTimestamp().getYear();
+    }
+
+    public Integer getMonth() {
+        // Get the month
+        return this.getStartTimeInTimestamp().getMonth();
+    }
+
+    public Integer getDay() {
+        // Get the day
+        return this.getStartTimeInTimestamp().getDay();
+    }
+
     public boolean isValidMatch() {
         /*
             Validate if the match is valid. Valid means:

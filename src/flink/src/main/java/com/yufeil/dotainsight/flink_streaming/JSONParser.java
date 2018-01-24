@@ -45,10 +45,7 @@ import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.api.common.serialization.TypeInformationSerializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.api.java.tuple.Tuple3;
-import org.apache.flink.api.java.tuple.Tuple4;
-import org.apache.flink.api.java.tuple.Tuple5;
+import org.apache.flink.api.java.tuple.*;
 import org.apache.flink.api.java.typeutils.TypeInfoParser;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.TimeCharacteristic;
@@ -66,6 +63,7 @@ import org.apache.flink.util.Collector;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Properties;
 
 public class JSONParser {
@@ -171,7 +169,7 @@ public class JSONParser {
         //    Here for each match, we generate two regionInfo records:
         //      (1) <cluster_id, start_time, 10>, "10" here marks it's the start of the match
         //      (2) <cluster_id, end_time, -10>, "-10" here marks the end of the match
-        //    We use 10/-10 here instead of 1/-1, to indicate the number of playeres.
+        //    We use 10/-10 here instead of 1/-1, to indicate the number of players.
         //    These two records both go into the regionInfo DataStream,
         //    So that we can simply use the sum() function to aggregate over a fixed window length,
         //    which gives us the number of current players in that region.
@@ -182,10 +180,10 @@ public class JSONParser {
         // 6. Extract each player's information from the match
         //    Format: Tuple5<Long, Timestamp, Integer, String, Integer>
         //       --> <account_id, start_time, duration, hero_id, win/lose>
-        DataStream<Tuple5<Long,Timestamp,Integer,String,Boolean>> playerMatchInfo = matches
-                .flatMap(new PlayerMatchInfoExtractor())
+        DataStream<Tuple5<Long,Long,Integer,String,Boolean>> playerMatchInfo = matches
+                .flatMap(new PlayerMatchInfoExtractor());
                 // Convert the type of timestamp from "long" to "timestamp", for Cassandra
-                .map(new PlayerMatchInfoLongToTimestamp());
+//                .map(new PlayerMatchInfoLongToTimestamp());
 
 
           /////////////////////////////////////////////
@@ -218,7 +216,7 @@ public class JSONParser {
          // for the downstream Flink processing, e.g. hero-result   //
         /////////////////////////////////////////////////////////////
 
-        // 1. "match-simple"
+        // "match-simple"
         DataStreamSink<String> matchSimpleSink = matchSimple.addSink(
                         new FlinkKafkaProducer010<>(
                         "match-simple",
@@ -226,29 +224,57 @@ public class JSONParser {
                         properties));
         matchSimpleSink.name("match-simple-to-kafka");
 
-        // 2. heroResult
-        DataStreamSink<Tuple3<String, Integer, Long>> heroResultSink = heroResult.addSink(
-                new FlinkKafkaProducer010<>(
-                        topics.HERO_RESULT,
-                        heroResultSerSchema,
-                        properties));
-        heroResultSink.name("hero-result-for-flink");
+        ////////////////////////////
+        // Calculate the win rate //
+        ////////////////////////////
 
-        // 3. heroPairResult
-        DataStreamSink<Tuple3<String, Integer, Long>> heroPairResultSink = heroPairResult.addSink(
-                new FlinkKafkaProducer010<>(
-                        topics.HERO_PAIR_RESULT,
-                        heroResultSerSchema,
-                        properties));
-        heroPairResultSink.name("hero-pair-result-for-flink");
+        // 1. Calculate the win rate for each hero.
+        //    Format: <hero_id:String, win rate:Float, time_stamp:Long>
+        DataStream<Tuple3<String,Float,Long>> heroWinRate = heroResult
+                .assignTimestampsAndWatermarks(new HeroResultTimeStampGenerator())
+                .keyBy(0)
+                .window(
+                        SlidingEventTimeWindows.of(
+                                Time.milliseconds(WINDOWLENGTH),
+                                Time.milliseconds(SLIDELENGTH)))
+                .aggregate(new WinRateAggregator());
+                // Convert the time from long to Timestamp, so that
+                // Cassandra can read it.
+//                .map(new HeroWinRateTimeStampLongToTimestamp());
 
-        // 4. heroCounterPairResult
-        DataStreamSink<Tuple3<String, Integer, Long>> heroCounterPairResultSink = heroCounterPairResult.addSink(
+
+        /////////////////////////////////////////////////
+        // Send the win rate result to Kafka as String //
+        //  For Redis to use                           //
+        /////////////////////////////////////////////////
+
+        // Convert from Tuple3 to String, then send to Kafka, for Redis to use.
+        DataStream<String> heroWinRateString = heroWinRate
+                .map(new HeroWinRateString());
+
+        DataStreamSink<String> heroWinRateSink = heroWinRateString.addSink(
                 new FlinkKafkaProducer010<>(
-                        topics.HERO_COUNTER_PAIR_RESULT,
-                        heroResultSerSchema,
+                        "hero-win-rate",
+                        new SimpleStringSchema(),
                         properties));
-        heroCounterPairResultSink.name("hero-counter-pair-result-for-flink");
+        heroWinRateSink.name("hero-win-rate-to-kafka");
+
+        ////////////////////////////////////////////////////
+        // Send hero win rate with date to Cassandra //
+        ////////////////////////////////////////////////////
+
+        // Generate year, month and day from timestamp.
+        // <hero_id,year,month,day,time_,win_rate>
+        DataStream<Tuple5<String,Integer,Integer,Integer,Float>> heroWinRateToCas =
+                heroWinRate.map(new HeroWinRateGenerateYearMonthDay());
+
+        CassandraSink.addSink(heroWinRateToCas)
+                .setQuery(
+                        "INSERT INTO "+CASSANDRA_KEYSPACE+".hero_win_rate" +
+                                "(hero_id, year, month, day, win_rate) values (?, ?, ?, ?, ?);")
+                .setHost(urls.CASSANDRA_URL)
+                .build();
+
 
           /////////////////////////////////////////////////////////////
          // Process and save the region-num-of-players to Cassandra //
@@ -258,22 +284,26 @@ public class JSONParser {
         //     Since the regionInfo DataStream is in the format of <cluster_id, time, +10/-10>,
         //     we can simply use an aggregation function over time.
 
-        DataStream<Tuple3<Integer,Timestamp,Long>> regionNumOfPlayers = regionInfo
+        DataStream<Tuple3<Integer,Long,Long>> regionNumOfPlayers = regionInfo
                 .assignTimestampsAndWatermarks(new RegionInfoTimeStampGenerator())
                 .keyBy(0)
                 .window(
                         SlidingEventTimeWindows.of(
-                                Time.milliseconds(WINDOWLENGTH),
-                                Time.milliseconds(SLIDELENGTH)))
-                .reduce((a,b) -> new Tuple3<>(a.f0,Math.max(a.f1,b.f1), a.f2+b.f2))
-                // Convert the type of timestamp from "long" to "timestamp", for Cassandra
-                .map(new RegionNumOfPlayersLongToTimestamp());
+                                Time.milliseconds(1000*60*60*24),
+                                Time.milliseconds(1000*60*60*6)))
+                .reduce((a,b) -> new Tuple3<>(a.f0,Math.max(a.f1,b.f1), a.f2+b.f2));
+
+        // Rewrite regionNumOfPlayers into the format that the table
+        // in Cassandra has:
+        //      <cluster_id:Integer,year:Integer,month:Integer,day:Integer,num_of_players:Long>
+        DataStream<Tuple5<Integer,Integer,Integer,Integer,Long>> regionNumOfPlayersToCas =
+                regionNumOfPlayers.map(new RegionNumOfPlayersGenerateYearMonthDay());
 
         // Write the result to Cassandra
-        CassandraSink.addSink(regionNumOfPlayers)
+        CassandraSink.addSink(regionNumOfPlayersToCas)
                 .setQuery(
                         "INSERT INTO "+CASSANDRA_KEYSPACE+".region_num_of_players" +
-                                "(cluster_id, time_, num_of_players) values (?, ?, ?);")
+                                "(cluster_id, year, month, day, num_of_players) values (?, ?, ?, ?, ?);")
                 .setHost(urls.CASSANDRA_URL)
                 .build();
 
@@ -281,10 +311,18 @@ public class JSONParser {
          // Save the player-match-info to Cassandra //
         /////////////////////////////////////////////
 
-        CassandraSink.addSink(playerMatchInfo)
+        // Generate year, month, day from playerMatchInfo
+        // <account_id:Long,year:Integer,month:Integer,day:Integer,start_time:Timestamp,
+        //  duration:Integer,hero_id:text,win:Boolean>
+
+        DataStream<Tuple8<Long,Integer,Integer,Integer,Long,Integer,String,Boolean>> playerMatchInfoToCas =
+                playerMatchInfo.map(new PlayerMatchInfoGenerateYearMonthDay());
+
+        CassandraSink.addSink(playerMatchInfoToCas)
                 .setQuery(
                         "INSERT INTO "+CASSANDRA_KEYSPACE+".player_match" +
-                                "(account_id, start_time, duration, hero_id, win) values (?, ?, ?, ?, ?);")
+                                "(account_id, year, month, day, start_time, duration, hero_id, win)" +
+                                " values (?, ?, ?, ?, ?, ?, ?, ?);")
                 .setHost(urls.CASSANDRA_URL)
                 .build();
 
@@ -553,4 +591,149 @@ public class JSONParser {
             return new Tuple3<>(v.f0,new Timestamp(v.f1),v.f2);
         }
     }
+
+    ///////////////////////////
+    // Hero win rate related //
+    ///////////////////////////
+    public static class HeroResultTimeStampGenerator implements AssignerWithPeriodicWatermarks<Tuple3<String,Integer,Long>> {
+
+        /*
+            Assign timestamp to each record of hero-result
+         */
+
+        private final long maxOutOfOrderness = 90*60; // 90 min out of order allowed.
+
+        private long currentMaxTimestamp;
+
+        @Override
+        public long extractTimestamp(Tuple3<String,Integer,Long> heroResult, long previousElementTimestamp) {
+            long timestamp = heroResult.f2;
+            currentMaxTimestamp = Math.max(timestamp, currentMaxTimestamp);
+            return timestamp;
+        }
+
+        @Override
+        public Watermark getCurrentWatermark() {
+            // return the watermark as current highest timestamp minus the out-of-orderness bound
+            return new Watermark(currentMaxTimestamp - maxOutOfOrderness);
+        }
+    }
+
+    private static class WinRateAggregator
+            implements AggregateFunction<Tuple3<String, Integer, Long>, Tuple4<String, Long, Long, Long>, Tuple3<String, Float, Long>> {
+
+        // Calculate the win rate of a specific hero
+        // See documentation
+        //    https://ci.apache.org/projects/flink/flink-docs-master/dev/stream/operators/windows.html#aggregatefunction
+        // Input/value: <hero_id:String,win/lose:Integer,start_time:Long>
+        // Accumulator: <hero_id:String,total_win:Long,total_played:Long,latest_start_time:Long>
+        // Result: <hero_id:String,win_rate:Float,latest_start_time:Long>
+
+        @Override
+        public Tuple4<String, Long, Long, Long> createAccumulator() {
+            return new Tuple4<>("",0L, 0L, 0L);
+        }
+
+        @Override
+        public Tuple4<String, Long, Long, Long> add(Tuple3<String, Integer, Long> value, Tuple4<String, Long, Long, Long> accumulator) {
+            // Update accumulator with the new value. Here we update the start_time to be the latest
+            return new Tuple4<>(value.f0,
+                    accumulator.f1 + value.f1,
+                    accumulator.f2+ 1L,
+                    Math.max(value.f2,accumulator.f3));
+        }
+
+        @Override
+        public Tuple3<String, Float, Long> getResult(Tuple4<String, Long, Long, Long> accumulator) {
+            return new Tuple3<>(accumulator.f0, Float.valueOf(accumulator.f1) / accumulator.f2, accumulator.f3);
+        }
+
+        @Override
+        public Tuple4<String, Long, Long, Long> merge(Tuple4<String, Long, Long, Long> a, Tuple4<String, Long, Long, Long> b) {
+            return new Tuple4<>(a.f0, a.f1 + b.f1, a.f2 + b.f2, Math.max(a.f3,b.f3));
+        }
+    }
+
+    private static class HeroWinRateTimeStampLongToTimestamp
+            implements MapFunction<Tuple3<String,Float,Long>, Tuple3<String,Float,Timestamp>> {
+        /*
+            Convert the timestamp in heroResult DataStream from Long to Timestamp
+            to save into Cassandra
+         */
+        @Override
+        public Tuple3<String,Float,Timestamp> map(Tuple3<String,Float,Long>v) throws Exception {
+            return new Tuple3<>(v.f0,v.f1,new Timestamp(v.f2));
+        }
+    }
+
+    private static class HeroWinRateString
+            implements MapFunction<Tuple3<String,Float,Long>, String> {
+        /*
+            Convert heroWinRate from Tuple3 to String
+         */
+        @Override
+        public String map(Tuple3<String,Float,Long> v) throws Exception {
+            return v.f0+","+String.format("%.3f", v.f1);
+        }
+    }
+
+    private static class HeroPairWinRateString
+            implements MapFunction<Tuple3<String,Float,Long>, String> {
+        /*
+            Convert heroPairWinRate from Tuple3 to String
+         */
+        @Override
+        public String map(Tuple3<String,Float,Long> v) throws Exception {
+            return v.f0+","+String.format("%.3f", v.f1);
+        }
+    }
+
+    private static class HeroWinRateGenerateYearMonthDay
+            implements MapFunction<Tuple3<String,Float,Long>, Tuple5<String,Integer,Integer,Integer,Float>> {
+        /*
+            Generate year, month and day from the timestamp (long). For Cassandra.
+         */
+        @Override
+        public Tuple5<String,Integer,Integer,Integer,Float> map(Tuple3<String,Float,Long> v) throws Exception {
+            Calendar cal = Calendar.getInstance();
+            cal.setTimeInMillis(v.f2);
+            return new  Tuple5<>(
+                    v.f0,cal.get(Calendar.YEAR),cal.get(Calendar.MONTH),cal.get(Calendar.DAY_OF_MONTH),v.f1
+            );
+        }
+    }
+
+    private static class RegionNumOfPlayersGenerateYearMonthDay
+            implements MapFunction<Tuple3<Integer,Long,Long>, Tuple5<Integer,Integer,Integer,Integer,Long>> {
+        /*
+            Generate year, month and day from the timestamp (long). For Cassandra.
+         */
+        @Override
+        public Tuple5<Integer,Integer,Integer,Integer,Long> map(Tuple3<Integer,Long,Long> v) throws Exception {
+            Calendar cal = Calendar.getInstance();
+            cal.setTimeInMillis(v.f1);
+            return new  Tuple5<>(
+                    v.f0,cal.get(Calendar.YEAR),cal.get(Calendar.MONTH),cal.get(Calendar.DAY_OF_MONTH),v.f2
+            );
+        }
+    }
+
+    private static class PlayerMatchInfoGenerateYearMonthDay
+            implements MapFunction<Tuple5<Long,Long,Integer,String,Boolean>,
+            Tuple8<Long,Integer,Integer,Integer,Long,Integer,String,Boolean>> {
+        /*
+            Generate year, month and day from the timestamp (long). For Cassandra.
+         */
+        @Override
+        public Tuple8<Long,Integer,Integer,Integer,Long,Integer,String,Boolean>
+            map(Tuple5<Long,Long,Integer,String,Boolean> v) throws Exception {
+            Calendar cal = Calendar.getInstance();
+            cal.setTimeInMillis(v.f1);
+            return new  Tuple8<>(
+                    v.f0,cal.get(Calendar.YEAR),cal.get(Calendar.MONTH),cal.get(Calendar.DAY_OF_MONTH),
+                    v.f1, v.f2, v.f3, v.f4
+            );
+        }
+    }
+
 }
