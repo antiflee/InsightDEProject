@@ -1,0 +1,14 @@
+peg stop web-cluster
+
+peg service cassandra-cluster cassandra stop
+peg service cassandra-cluster spark stop
+
+
+peg service insight-cluster flink stop
+peg service insight-cluster kafka stop
+peg service insight-cluster zookeeper stop
+
+
+peg stop insight-cluster
+
+peg stop cassandra-cluster

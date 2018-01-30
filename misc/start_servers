@@ -1,0 +1,29 @@
+peg start insight-cluster
+peg start cassandra-cluster
+peg start web-cluster
+
+peg service insight-cluster zookeeper start
+peg service insight-cluster flink start
+peg service insight-cluster kafka start
+
+kafka-manager
+
+peg service cassandra-cluster cassandra start
+peg service cassandra-cluster spark start
+
+
+redis-server --protected-mode no
+python3 JSONGeneratorFromCSV_matches.py
+python3 ~/python_kafka_consumer_hero_win_rate/kafka_win_rate_consumers.py
+
+
+python3 ~/dota-insight-django/manage.py runserver ec2-34-213-4-249.us-west-2.compute.amazonaws.com:8000
+
+python3 spark-job-automator.py ~/test2_2.11-0.1.jar player_daily 2012-05-29
+python3 spark-job-automator.py ~/test2_2.11-0.1.jar DAU 2012-05-29
+cqlsh
+
+
+$SPARK_HOME/bin/spark-submit --packages datastax:spark-cassandra-connector:2.0.1-s_2.11 --master spark://ip-10-0-0-5.us-west-2.compute.internal:7077 --class com.yufeil.dotainsight.spark.PlayerDailyProcessor ~/test2_2.11-0.1.jar
+
+$SPARK_HOME/bin/spark-submit --packages datastax:spark-cassandra-connector:2.0.1-s_2.11 --master spark://ip-10-0-0-5.us-west-2.compute.internal:7077 --class com.yufeil.dotainsight.spark.PlayerDailyProcessor ~/test2_2.11-0.1.jar

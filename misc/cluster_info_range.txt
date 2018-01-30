@@ -1,0 +1,11 @@
+110-129,United States
+130-139,Europe
+140-149,South Korea
+150-159,Southeast Asia
+160-169,China
+170-179,Australia
+180-189,Russia
+190-199,Europe
+200-209,South America
+210-219,South Africa
+220-239,China
