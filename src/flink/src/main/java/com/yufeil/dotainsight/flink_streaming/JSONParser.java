@@ -1,32 +1,63 @@
 package com.yufeil.dotainsight.flink_streaming;
 
 /*
-    Read from topic "match-raw-json" from Kafka,
-    Parse it and send corresponding data to the following topics in Kafka:
+    Read from topic "match-raw-json" from Kafka, parse it and generate the following data streams (note
+    there are some intermediate streams that are not included in this table):
 
-    (1) "match-simple":
-            "hero_id1,hero_id2,...hero_id10,radiant win,timestamp"
-    (2) "hero-result":
-            "hero_id,win/lose,timestamp"
-    (3) "hero-pair-result":
-            "hero_id1,hero_id2,win/lose"
-    (4) "hero-counter-pair-result":
-            "hero_id1,hero_id2,hero1 win/lose"
-    (5) "region-info":
-            "region,timestamp,players(10)"
-    (6) "player-match-info":
-            "account_id,timestamp,duration,hero_id,win/lose"
+   |----------------------------------------------------------------------------------------------------------------|
+   |   |        NAME          |            FORMAT            |    DESTINATION     |              NOTE               |
+   |----------------------------------------------------------------------------------------------------------------|
+   |(0)|       matches        |     <match:SingleMatch>      |       Flink        | Generated from json             |
+   |   |                      |                              |                    | using Gson                      |
+   |----------------------------------------------------------------------------------------------------------------|
+   |   |                      |                              |                    | Not used. Will be saved         |
+   |(1)|     matchSimple      |        <String>              |       -----        | to a SQL DB later (for          |
+   |   |                      |                              |                    | a ML project).                  |
+   |----------------------------------------------------------------------------------------------------------------|
+   |(2)|     heroResult       |   <hero_id,win,start_time>   |       Flink        | For downstream processing in    |
+   |   |                      |                              |                    | Flink (win-rate calculation).   |
+   |----------------------------------------------------------------------------------------------------------------|
+   |(3)|    heroPairResult    |   <"id1,id2",win,time_>      |       Flink        | Here two hero ids are combined  |
+   |   |                      |                              |                    | as one string.                  |
+   |----------------------------------------------------------------------------------------------------------------|
+   |(4)| heroCounterPairResult|     <"id1,id2",win,time_>    |       Flink        | Same as above.                  |
+   |----------------------------------------------------------------------------------------------------------------|
+   |   |                      |                              |                    | For the calculation of num_of_  |
+   |(5)|     regionInfo       |  <cluster_id,start_time,10L> |       Flink        | players in each region. The     |
+   |   |                      |                              |                    | number 10L here is used for     |
+   |   |                      |                              |                    | aggregation function later.     |
+   |----------------------------------------------------------------------------------------------------------------|
+   |(6)|   playerMatchInfo    | <acc_id,start_time,duration, |       Flink        | Will be used later by Flink, to |
+   |   |                      |                              |                    | save to Cassandra.              |
+   |----------------------------------------------------------------------------------------------------------------|
+   |   |                      |                              |       Kafka        | This data is for Redis to use.  |
+   |(7)|    heroWinRate       |   <hero_id,win_rate,time_>   |  topic: "hero-win  |                                 |
+   |   |                      |                              |  -rate"            |                                 |
+   |----------------------------------------------------------------------------------------------------------------|
+   |   |                      |                              |       Kafka        | Here two hero ids are combined. |
+   |(8)|    heroPairWinRate   |  <"id1,id2",win_rate,time_>  |  topic: "hero-pair |                                 |
+   |   |                      |                              |  -win"             |                                 |
+   |----------------------------------------------------------------------------------------------------------------|
+   |   |                      |                              |       Kafka        | See above.                      |
+   |(9)|heroCounterPairWinRate|  <"id1,id2",win_rate,time_>  |  topic: "hero-     |                                 |
+   |   |                      |                              |  counter-pair-win" |                                 |
+   |----------------------------------------------------------------------------------------------------------------|
+   |    |                     |                              |      Cassandra     | Split date into year,month,day  |
+   |(10)|  heroWinRateDaily   |<hero_id,date,win_rate,count> |  table: "hero_win  | before saving to Cassandra.     |
+   |    |                     |                              |  _rate"            |                                 |
+   |----------------------------------------------------------------------------------------------------------------|
+   |    |                     |     <cluster_id,date,        |      Cassandra     | Same as above.                  |
+   |(11)| regionNumOfPlayers  |     num_of_players>          |  table: "region_   |                                 |
+   |    |                     |                              |  num_of_players"   |                                 |
+   |----------------------------------------------------------------------------------------------------------------|
+   |    |                     |                              |      Cassandra     | Note here each record in the data|
+   |    |                     | <acc_id,date,time,duration,  |  table#1: "player_ | stream is saved to 2 Cassandra  |
+   |(12)|playerMatchInfoToCas |      hero_id,win/lose>       |  match"; #2: "daily| tables. The only difference b/w |
+   |    |                     |                              |  _player.          | the 2 tables are the choice of  |
+   |    |                     |                              |                    | partition key. The 2 tables are |
+   |    |                     |                              |                    | for two different use cases.    |
+   |----------------------------------------------------------------------------------------------------------------|
 
-    Then based on the DataStrams generated above, do some further processing:
-
-    (7) "region-num-of-players":
-            "cluster_id, time_, num_of_players"
-
-    Send these data streams to Kafka (for downstream Flink usage):
-    (a) hero-result, (b) hero-pair-result, (c) hero-counter-pair-result
-
-    Send these data streams to Cassandra (for downstream Spark usage):
-    (a) region-num-of-players, (b) player-match-info
 
     To-dos:
     (1) Use Avro for Schema Registry
@@ -191,6 +222,8 @@ public class JSONParser {
         // is used for data that are both read and written by Flink.
         // See: https://ci.apache.org/projects/flink/flink-docs-release-1.4/dev/connectors/kafka.html#the-deserializationschema
 
+        // This part is not used, but just left here for the record.
+
         // 1. heroResult,heroPairResult,heroCounterPairResult: Tuple3<String, Integer, Long>
         TypeInformation<Tuple3<String, Integer, Long>> stringIntLong = TypeInfoParser.parse("Tuple3<String, Integer, Long>");
         TypeInformationSerializationSchema<Tuple3<String, Integer, Long>> heroResultSerSchema =
@@ -233,12 +266,6 @@ public class JSONParser {
         DataStream<Tuple3<String,Float,Long>> heroWinRate = heroResultTimed
                 .keyBy(0)
                 .countWindow(100)
-//                .window(TumblingEventTimeWindows.of(Time.minutes(30)))
-//                .window(TumblingProcessingTimeWindows.of(Time.minutes(5)))
-//                .window(
-//                        SlidingEventTimeWindows.of(
-//                                Time.milliseconds(5000),
-//                                Time.milliseconds(1000)))
                 .aggregate(new WinRateAggregator());
 
         heroResultTimed.print();
@@ -384,6 +411,9 @@ public class JSONParser {
 
         // Generate (date:String, account_id:Long, time_:Long, hero_id:String, duration:Integer) for each player,
         // to speed up the calculation of DAU and MAU in Spark
+
+        // This part could be optimized in the way that instead of transforming from playerMatchInfo,
+        // just directly use playerMatchInfoToCas, with the date and account_id swapped.
         DataStream<Tuple7<Integer,Integer,Integer,Long,Long,String,Integer> > dailyPlayerInfo =
                 playerMatchInfo.map(new dailyPlayerInfoMapper());
 
