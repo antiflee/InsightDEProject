@@ -15,7 +15,7 @@ import org.apache.spark.rdd.RDD
   and write the result into ks.'daily_active_user'.
 
   Using HyperLogLog (HLL) to achieve the space and time efficiency. The trade-off is
-  accuracry.
+  accuracy.
 
   One example can be found:
     https://github.com/eBay/Spark/blob/master/examples/src/main/scala/org/apache/spark/examples/streaming/TwitterAlgebirdHLL.scala
