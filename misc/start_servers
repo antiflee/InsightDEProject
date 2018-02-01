@@ -18,6 +18,9 @@ python3 ~/python_kafka_consumer_hero_win_rate/kafka_win_rate_consumers.py
 
 
 python3 ~/dota-insight-django/manage.py runserver ec2-34-213-4-249.us-west-2.compute.amazonaws.com:8000
+sudo /etc/init.d/nginx start
+
+// https://www.youtube.com/watch?v=311DvLh8ems
 
 python3 spark-job-automator.py ~/test2_2.11-0.1.jar player_daily 2012-05-29
 python3 spark-job-automator.py ~/test2_2.11-0.1.jar DAU 2012-05-29
