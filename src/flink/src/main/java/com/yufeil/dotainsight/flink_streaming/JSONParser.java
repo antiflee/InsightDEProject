@@ -368,8 +368,8 @@ public class JSONParser {
         DataStream<Tuple3<Integer,Long,Long>> regionNumOfPlayers = regionInfo
                 .assignTimestampsAndWatermarks(new RegionInfoTimeStampGenerator())
                 .keyBy(0)
-                .window(TumblingProcessingTimeWindows.of(Time.minutes(5)))
-//                .window(TumblingEventTimeWindows.of(Time.days(1)))
+//                .window(TumblingProcessingTimeWindows.of(Time.minutes(5)))
+                .window(TumblingEventTimeWindows.of(Time.days(1)))
                 .reduce((a,b) -> new Tuple3<>(a.f0,Math.max(a.f1,b.f1), a.f2+b.f2));
 
         // Rewrite regionNumOfPlayers into the format that the table
