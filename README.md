@@ -60,9 +60,17 @@ Basically, users of this app can query with a specific date, or with an account 
 
 *Click any component below to see the source code!*
 
-<a href="https://github.com/antiflee/InsightDEProject/blob/master/src/kafka_producer/JSONGeneratorFromCSV_matches.py">Producer from S3 to Kafka</a>
+|                              <a href="https://github.com/antiflee/InsightDEProject/blob/master/src/python-kafka-to-redis/kafka_win_rate_consumers.py">Consumer from Kafka to Redis</a>
+
+|
+
+|
+
+|
+
+
+<a href="https://github.com/antiflee/InsightDEProject/blob/master/src/kafka_producer/JSONGeneratorFromCSV_matches.py">[Producer from S3 to Kafka]</a>-----Kafka-----
 <a href="https://github.com/antiflee/InsightDEProject/blob/master/src/flink/src/main/java/com/yufeil/dotainsight/flink_streaming/JSONParser.java">Flink</a>
-<a href="https://github.com/antiflee/InsightDEProject/blob/master/src/python-kafka-to-redis/kafka_win_rate_consumers.py">Consumer from Kafka to Redis</a>
 <a href="https://github.com/antiflee/InsightDEProject/blob/master/misc/CassandraTableSchema.cql">Cassandra Schema</a>
 <a href="https://github.com/antiflee/InsightDEProject/tree/master/src/spark">Spark</a>
 <a href="https://github.com/antiflee/dota-insight-django">Django</a>
