@@ -60,13 +60,18 @@ Basically, users of this app can query with a specific date, or with an account 
 <br>
 *Click any component below to see the source code!*
 
+```mermaid
+graph LR
+A[Square Rect] -- Link text --> B((Circle))
+A --> C(Round Rect)
+B --> D{Rhombus}
+C --> D
+```
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://github.com/antiflee/InsightDEProject/blob/master/src/python-kafka-to-redis/kafka_win_rate_consumers.py">Consumer from Kafka to Redis</a>
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|
-
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|
-
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|
 
 [S3]-----<a href="https://github.com/antiflee/InsightDEProject/blob/master/src/kafka_producer/JSONGeneratorFromCSV_matches.py">[Producer]</a>-----[Kafka]-----
