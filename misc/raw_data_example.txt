@@ -1,0 +1,36 @@
+match_id,                         2304340261
+match_seq_num,                    2019317886
+radiant_win,                      t
+start_time,                       1461013929
+duration,                         1701
+tower_status_radiant,             1975
+tower_status_dire,                4
+barracks_status_radiant,          63
+barracks_status_dire,             3
+cluster,                          155
+first_blood_time,                 100
+lobby_type,                       0
+human_players,                    10
+leagueid,                         0
+positive_votes,                   0
+negative_votes,                   0
+game_mode,                        1
+engine,                           1
+picks_bans,
+parse_status,                     2
+chat,
+objectives,
+radiant_gold_adv,
+radiant_xp_adv,
+teamfights,
+version,
+pgroup                            {""0"":{""account_id"":4294967295,""hero_id"":93,""player_slot"":0},
+                                  ""1"":{""account_id"":4294967295,""hero_id"":75,""player_slot"":1},
+                                  ""2"":{""account_id"":4294967295,""hero_id"":19,""player_slot"":2},
+                                  ""3"":{""account_id"":4294967295,""hero_id"":44,""player_slot"":3},
+                                  ""4"":{""account_id"":4294967295,""hero_id"":7,""player_slot"":4},
+                                  ""128"":{""account_id"":4294967295,""hero_id"":46,""player_slot"":128},
+                                  ""129"":{""account_id"":45475622,""hero_id"":38,""player_slot"":129},
+                                  ""130"":{""account_id"":4294967295,""hero_id"":52,""player_slot"":130},
+                                  ""131"":{""account_id"":4294967295,""hero_id"":43,""player_slot"":131},
+                                  ""132"":{""account_id"":4294967295,""hero_id"":60,""player_slot"":132}}"
