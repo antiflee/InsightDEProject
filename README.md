@@ -10,6 +10,10 @@ Insight DE 18A
 
 # About
 
+* <a href="https://docs.google.com/presentation/d/1YrbU6vBK0_jchzj-x7RPRLyQJft8U83qO6RziF-5Ijw/edit#slide=id.g3285dc8d63_0_0">
+  Slides </a>
+
+
 This project is to build a pipeline for the analysis on a popular online video game <a href="https://www.dota2.com">DOTA2</a>.
 
 *About DOTA2 (From <a href="https://en.wikipedia.org/wiki/Dota_2">Wikipedia</a>)*:
@@ -53,3 +57,12 @@ Basically, users of this app can query with a specific date, or with an account 
 # Pipeline
 
 <img src="https://s3-us-west-2.amazonaws.com/yfsmiscfilesbucket/pipeline.png">
+
+*Click any component below to see the source code!*
+
+<a href="https://github.com/antiflee/InsightDEProject/blob/master/src/kafka_producer/JSONGeneratorFromCSV_matches.py">Producer from S3 to Kafka</a>
+<a href="https://github.com/antiflee/InsightDEProject/blob/master/src/flink/src/main/java/com/yufeil/dotainsight/flink_streaming/JSONParser.java">Flink</a>
+<a href="https://github.com/antiflee/InsightDEProject/blob/master/src/python-kafka-to-redis/kafka_win_rate_consumers.py">Consumer from Kafka to Redis</a>
+<a href="https://github.com/antiflee/InsightDEProject/blob/master/misc/CassandraTableSchema.cql">Cassandra Schema</a>
+<a href="https://github.com/antiflee/InsightDEProject/tree/master/src/spark">Spark</a>
+<a href="https://github.com/antiflee/dota-insight-django">Django</a>
