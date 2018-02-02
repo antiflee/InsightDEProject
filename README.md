@@ -59,6 +59,8 @@ Basically, users of this app can query with a specific date, or with an account 
 <img src="https://s3-us-west-2.amazonaws.com/yfsmiscfilesbucket/pipeline.png">
 <br>
 *Click any component below to see the source code!*
+
+
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://github.com/antiflee/InsightDEProject/blob/master/src/python-kafka-to-redis/kafka_win_rate_consumers.py">Consumer from Kafka to Redis</a>
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|
