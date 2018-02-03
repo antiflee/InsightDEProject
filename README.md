@@ -12,6 +12,8 @@ Insight DE 18A
 
 * <a href="https://docs.google.com/presentation/d/1YrbU6vBK0_jchzj-x7RPRLyQJft8U83qO6RziF-5Ijw/edit#slide=id.g3285dc8d63_0_0">
   Slides </a>
+* <a href="https://youtu.be/tansAxfuKWQ">
+  Video Demo </a>
 
 
 This project is to build a pipeline for the analysis on a popular online video game <a href="https://www.dota2.com">DOTA2</a>.
