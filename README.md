@@ -1,5 +1,5 @@
 # Dota Insight
-
+![Language](https://img.shields.io/badge/language-Python%20%2F%20Java%20%2F%20Scala-orange.svg)
 Insight DE 18A
 
 # Table of Contents
