@@ -76,4 +76,4 @@ Basically, users of this app can query with a specific date, or with an account 
 
 <br>
 
-<img src="https://s3-us-west-2.amazonaws.com/yfsmiscfilesbucket/pipeline.png">
+<img src="https://github.com/antiflee/InsightDEProject/blob/master/misc/pipeline.png?raw=true">
